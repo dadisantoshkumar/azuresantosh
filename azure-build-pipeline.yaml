@@ -1,0 +1,44 @@
+variables:
+  
+  - name: dockerRegistryServiceConnection
+    value: 'hino-container-az' # make sure it matches the name you used in the service connection
+  
+  - name: acrEndpoint
+    value: 'hinopocacr.azurecr.io' # replace with container registry endpoint
+
+  - name: tag
+    value: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:  
+  - job: Build
+    displayName: Build job
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: hino 
+        dockerfile: '**/Dockerfile'
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: $(tag)
+    
+    - task: HelmInstaller@0
+      displayName: 'Install Helm 3.*.*'
+      inputs:
+        helmVersion: 3.0.2
+        checkLatestHelmVersion: false
+        kubectlVersion: 1.10.3
+        checkLatestKubectl: false
+
+    
+    - task: HelmDeploy@0
+      displayName: 'helm package'
+      inputs:
+        command: package
+        chartPath: '**/charts/hino'
+        save: false
